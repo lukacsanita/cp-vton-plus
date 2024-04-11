@@ -1,7 +1,8 @@
 *__pycache__*
 checkpoints/*
-tensorboard/*
+tensorboard/
 result/
+smart_result/
 data/train/*
 data/test/*
 log/*

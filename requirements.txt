@@ -1,6 +1,5 @@
-torch
-torchvision
 tensorboardX
-pillow
 numpy
-opencv-contrib-python
+Pillow
+opencv-python
+tqdm
