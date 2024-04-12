@@ -45,11 +45,11 @@ This is a combination of training and testing of GMM (Geometric Matching Module)
 	- The saved checkpoints is available [here](https://drive.google.com/file/d/1xC0f4G2NRg5UILe7XcdqDQtnd12FotRc/view?usp=sharing).
 	- After downloading, unzip and move  `data` directory.
 
-### End-to-end run Testing
+### End-to-end run for Testing
 
 Run the testing end-to-end with GMM and TOM for the test dataset
 
-```
+```bash
 python e2e.py --mode test
 ```
 
@@ -58,11 +58,11 @@ View the Tensorboard traning logs:
 tensorboard --logdir tensorboard
 ```
 
-### End-to-end run Training
+### End-to-end run for Training
 
 Run the training end-to-end with GMM and TOM for the train dataset
 
-```
+```bash
 python e2e.py --mode train
 ```
 
@@ -70,3 +70,13 @@ View the Tensorboard testing logs:
 ```
 tensorboard --logdir tensorboard
 ```
+
+### End-to-end run for Demo
+
+- Select a cloth image from the directory `data/test/cloth` and a person image from `data/test/image`.
+- Create a text file within the `data` directory that contains the filenames of the chosen person and cloth images on the same line (e.g. "demo_pair.txt" file contains "000174_0.jpg 016866_1.jpg").
+- Utilize this text file as the data list for executing the e2e.py script:
+	```bash
+	python e2e.py --mode demo --data_list demo_pair.txt
+	```
+- Upon execution, the script will sequentially utilize two models in an end-to-end fashion and display the resulting output.

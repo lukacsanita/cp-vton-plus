@@ -5,6 +5,7 @@ result/
 smart_result/
 data/train/*
 data/test/*
+data/demo/*
 log/*
 *.sh
 result/*

@@ -2,25 +2,16 @@ import subprocess
 import shutil
 import time
 import argparse
+import os
+import cv2
 
-
-
-def get_opt():
-    """
-    Parses command line arguments.
-
-    Returns:
-        opt (argparse.Namespace): Namespace containing parsed arguments.
-    """
-
-
-    return opt
 
 
 if __name__ == "__main__":
     # Parse user options
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", default="train", help="Name of the running mode (train or test)")
+    parser.add_argument("--mode", default="train", help="Name of the running mode (train, test or demo)")
+    parser.add_argument("--data_list", default="test_pairs.txt")
     opt = parser.parse_args()
     print(opt)
     
@@ -28,11 +19,11 @@ if __name__ == "__main__":
     t = time.time()
     
     # Define commands for GMM training or testing
-    if opt.mode == "test":
-        gmm_run = ("python test.py --name GMM --stage GMM --workers 1 --b 2 --datamode test --data_list test_pairs.txt "
+    if opt.mode in ["test", "demo"]:
+        gmm_run = (f"python test.py --name GMM --stage GMM --workers 1 --b 2 --datamode test --data_list {opt.data_list} "
                     "--checkpoint checkpoints/GMM/gmm_final.pth")
     elif opt.mode == "train":
-        gmm_run = "python train.py --name GMM --stage GMM --workers 4 --save_count 5000 --shuffle"
+        gmm_run = "python train.py --name GMM --stage GMM --workers 4 --save_count 5000 --shuffle"    
 
     # Run GMM
     subprocess.call(gmm_run, shell=True)
@@ -48,16 +39,34 @@ if __name__ == "__main__":
     shutil.copytree(warp_mask_src, warp_mask_dst, dirs_exist_ok=True)
 
     # Define commands for TOM training or testing
-    if opt.mode == "test":
-        tom_run = ("python test.py --name TOM --stage TOM --workers 1 --b 2 --datamode test --data_list test_pairs.txt "
+    if opt.mode in ["test", "demo"]:
+        tom_run = (f"python test.py --name TOM --stage TOM --workers 1 --b 2 --datamode test --data_list {opt.data_list} "
                     "--checkpoint checkpoints/TOM/tom_final.pth")
     elif opt.mode == "train":
         tom_run = "python train.py --name TOM --stage TOM --workers 4 --save_count 5000 --shuffle"
 
     # Run TOM
     subprocess.call(tom_run, shell=True)
-
+    
     # Print total execution time
     total_time = time.time() - t
     print(f"TOTAL TIME: {total_time} seconds")
-    print("ALL PROCESS FINISHED")
+    print("ALL MODELS PROCESS FINISHED")
+    
+    # Show result image when demo
+    if opt.mode == "demo":
+        demo_pair_path = f'data/{opt.data_list}'
+        pair = open(demo_pair_path).readlines()[0]
+        dst, src = pair.strip().split(' ')
+        person = dst.split('_')[0]
+        result_dir = "result/TOM/test/try-on"
+        result_img_name = os.path.join(result_dir, person + "_0.jpg")
+        # Read the image with opencv
+        img = cv2.imread(result_img_name)
+        # Show the image with window name
+        cv2.imshow("Try-on", img)
+        # Window waits until user presses a key
+        print("\n PRESS ANY KEY TO CLOSE THE WINDOW")
+        cv2.waitKey(0)
+        # Finally destroy/close all open windows
+        cv2.destroyAllWindows()
