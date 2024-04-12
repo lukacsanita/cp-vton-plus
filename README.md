@@ -20,7 +20,8 @@ This is a combination of training and testing of GMM (Geometric Matching Module)
 	- Git clone this repo
   	- Prepare model checkpoints and dataset.
   	- Test the GMM and TOM models with test dataset.
-  	- Visualize the test results in `smart_result` directory.
+  	- Visualize the test results in `smart_result` folder.
+	- Zip that folder then download it.
 
 
 ## Running locally
