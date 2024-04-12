@@ -46,7 +46,7 @@ It is a combination of consecutive training and testing of GMM (Geometric Matchi
 
 ### End-to-end run Testing
 
-Run the testing end-to-end with GMM and TOM for the dataset
+Run the testing end-to-end with GMM and TOM for the test dataset
 
 ```
 python e2e.py --mode test
@@ -59,7 +59,7 @@ tensorboard --logdir tensorboard
 
 ### End-to-end run Training
 
-Run the training end-to-end with GMM and TOM for the dataset
+Run the training end-to-end with GMM and TOM for the train dataset
 
 ```
 python e2e.py --mode train
