@@ -36,12 +36,12 @@ This is a combination of training and testing of GMM (Geometric Matching Module)
 
 3. Download and prepare the dataset:
 
-	- The full and processed dataset is available [here](https://1drv.ms/u/s!Ai8t8GAHdzVUiQQYX0azYhqIDPP6?e=4cpFTI).
+	- The full and processed dataset is available [here](https://drive.google.com/file/d/1OfFzD-qeXH3Z058K7pQV-nyS4FJT6iA8/view?usp=sharing).
 	- After downloading, unzip and move all contents to the `data` directory.
 
 4. Download and prepare the checkpoints:
 
-	- The saved checkpoints is available [here](https://1drv.ms/u/s!Ai8t8GAHdzVUiQA-o3C7cnrfGN6O?e=EaRiFP).
+	- The saved checkpoints is available [here](https://drive.google.com/file/d/1xC0f4G2NRg5UILe7XcdqDQtnd12FotRc/view?usp=sharing).
 	- After downloading, unzip and move  `data` directory.
 
 ### End-to-end run Testing
