@@ -10,24 +10,29 @@ from cp_dataset import CPDataset, CPDataLoader
 from networks import GicLoss, GMM, UnetGenerator, VGGLoss, load_checkpoint, save_checkpoint
 
 from tensorboardX import SummaryWriter
-from visualization import board_add_image, board_add_images
+from visualization import board_add_images
 
 
 def get_opt():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--name", default="GMM")
-    # parser.add_argument("--name", default="TOM")
+    """
+    Parses command line arguments for training options.
 
-    parser.add_argument("--gpu_ids", default="")
+    Returns:
+        opt (argparse.Namespace): Namespace containing parsed arguments.
+    """
+
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument("--name", default="GMM", help="Name of the model (GMM or TOM)")
+
+    parser.add_argument("--gpu_ids", default="", help="Comma separated list of GPU ids")
     parser.add_argument('-j', '--workers', type=int, default=1)
     parser.add_argument('-b', '--batch-size', type=int, default=4)
 
     parser.add_argument("--dataroot", default="data")
-
     parser.add_argument("--datamode", default="train")
 
-    parser.add_argument("--stage", default="GMM")
-    # parser.add_argument("--stage", default="TOM")
+    parser.add_argument("--stage", default="GMM", help="Model stage (GMM or TOM)")
 
     parser.add_argument("--data_list", default="train_pairs.txt")
 
@@ -35,37 +40,42 @@ def get_opt():
     parser.add_argument("--fine_height", type=int, default=256)
     parser.add_argument("--radius", type=int, default=5)
     parser.add_argument("--grid_size", type=int, default=5)
-    parser.add_argument('--lr', type=float, default=0.0001,
-                        help='initial learning rate for adam')
-    parser.add_argument('--tensorboard_dir', type=str,
-                        default='tensorboard', help='save tensorboard infos')
-    parser.add_argument('--checkpoint_dir', type=str,
-                        default='checkpoints', help='save checkpoint infos')
-    parser.add_argument('--checkpoint', type=str, default='',
-                        help='model checkpoint for initialization')
+    parser.add_argument('--lr', type=float, default=0.0001, help='Initial learning rate for adam')
+    parser.add_argument('--tensorboard_dir', type=str, default='tensorboard', help='Directory to save TensorBoard summaries')
+    parser.add_argument('--checkpoint_dir', type=str, default='checkpoints', help='Directory to save trained checkpoints')
+    parser.add_argument('--checkpoint', type=str, default='', help='Path to model checkpoint for initialization')
     parser.add_argument("--display_count", type=int, default=20)
     parser.add_argument("--save_count", type=int, default=5000)
     parser.add_argument("--keep_step", type=int, default=100000)
     parser.add_argument("--decay_step", type=int, default=100000)
-    parser.add_argument("--shuffle", action='store_true',
-                        help='shuffle input data')
+    parser.add_argument("--shuffle", action='store_true', help='Shuffle input data')
 
     opt = parser.parse_args()
     return opt
 
 
 def train_gmm(opt, train_loader, model, board):
+    """
+    Perform training the GMM model on a given dataset.
+
+    Args:
+        opt (object): Training options object containing hyperparameters.
+        train_loader (Dataloader): PyTorch dataloader for training data.
+        model (nn.Module): The GMM model to be trained.
+        board (SummaryWriter): TensorBoard writer for logging training information.
+    """
+
+    # Move model to GPU and set training mod
     model.cuda()
     model.train()
 
-    # criterion
+    # Criterion
     criterionL1 = nn.L1Loss()
     gicloss = GicLoss(opt)
-    # optimizer
+
+    # Optimizer
     optimizer = torch.optim.Adam(
         model.parameters(), lr=opt.lr, betas=(0.5, 0.999))
-    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda step: 1.0 -
-                                                  max(0, step - opt.keep_step) / float(opt.decay_step + 1))
 
     for step in range(opt.keep_step + opt.decay_step):
         iter_start_time = time.time()
@@ -82,7 +92,7 @@ def train_gmm(opt, train_loader, model, board):
         im_g = inputs['grid_image'].cuda()
 
         grid, theta = model(agnostic, cm)    # can be added c too for new training
-        warped_cloth = F.grid_sample(c, grid, padding_mode='border',align_corners=True)  # fix new version of torch add align_corners=True
+        warped_cloth = F.grid_sample(c, grid, padding_mode='border',align_corners=True)
         warped_mask = F.grid_sample(cm, grid, padding_mode='zeros',align_corners=True)
         warped_grid = F.grid_sample(im_g, grid, padding_mode='zeros',align_corners=True)
 
@@ -91,16 +101,16 @@ def train_gmm(opt, train_loader, model, board):
                    [warped_grid, (warped_cloth+im)*0.5, im]]
 
         # loss for warped cloth
-        Lwarp = criterionL1(warped_cloth, im_c)    # changing to previous code as it corresponds to the working code
-        # Actual loss function as in the paper given below (comment out previous line and uncomment below to train as per the paper)
-        # Lwarp = criterionL1(warped_mask, cm)    # loss for warped mask thanks @xuxiaochun025 for fixing the git code.
+        Lwarp = criterionL1(warped_cloth, im_c)
+        # Actual loss function as in the paper given below
+        # Lwarp = criterionL1(warped_mask, cm)
         
         # grid regularization loss
         Lgic = gicloss(grid)
         # 200x200 = 40.000 * 0.001
         Lgic = Lgic / (grid.shape[0] * grid.shape[1] * grid.shape[2])
 
-        loss = Lwarp + 40 * Lgic    # total GMM loss
+        loss = Lwarp + 40 * Lgic  # total GMM loss
 
         optimizer.zero_grad()
         loss.backward()
@@ -121,19 +131,28 @@ def train_gmm(opt, train_loader, model, board):
 
 
 def train_tom(opt, train_loader, model, board):
+    """
+    Perform training the TOM model on a given dataset.
+
+    Args:
+        opt (object): Training options object containing hyperparameters.
+        train_loader (Dataloader): PyTorch dataloader for training data.
+        model (nn.Module): The TOM model to be trained.
+        board (SummaryWriter): TensorBoard writer for logging training information.
+    """
+
+    # Move model to GPU and set training mod
     model.cuda()
     model.train()
 
-    # criterion
+    # Criterion
     criterionL1 = nn.L1Loss()
     criterionVGG = VGGLoss()
     criterionMask = nn.L1Loss()
 
-    # optimizer
+    # Optimizer
     optimizer = torch.optim.Adam(
         model.parameters(), lr=opt.lr, betas=(0.5, 0.999))
-    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda step: 1.0 -
-                                                  max(0, step - opt.keep_step) / float(opt.decay_step + 1))
 
     for step in range(opt.keep_step + opt.decay_step):
         iter_start_time = time.time()
@@ -152,8 +171,8 @@ def train_tom(opt, train_loader, model, board):
         # outputs = model(torch.cat([agnostic, c], 1))  # CP-VTON
         outputs = model(torch.cat([agnostic, c, cm], 1))  # CP-VTON+
         p_rendered, m_composite = torch.split(outputs, 3, 1)
-        p_rendered = torch.tanh(p_rendered)   # fix torch.nn.functional.tanh depercated
-        m_composite = torch.sigmoid(m_composite) # fix torch.nn.functional.sigmoid depercated
+        p_rendered = torch.tanh(p_rendered)
+        m_composite = torch.sigmoid(m_composite)
         p_tryon = c * m_composite + p_rendered * (1 - m_composite)
 
         """visuals = [[im_h, shape, im_pose],
@@ -189,23 +208,25 @@ def train_tom(opt, train_loader, model, board):
                 opt.checkpoint_dir, opt.name, 'step_%06d.pth' % (step+1)))
 
 
-def main():
+
+if __name__ == "__main__":
+    # Parse user options
     opt = get_opt()
     print(opt)
+
     print("Start to train stage: %s, named: %s!" % (opt.stage, opt.name))
 
-    # create dataset
+    # Create dataset
     train_dataset = CPDataset(opt)
 
-    # create dataloader
+    # Create dataloader
     train_loader = CPDataLoader(opt, train_dataset)
 
-    # visualization
-    if not os.path.exists(opt.tensorboard_dir):
-        os.makedirs(opt.tensorboard_dir)
+    # Setup TensorBoard for visualization
+    os.makedirs(opt.tensorboard_dir, exist_ok=True)
     board = SummaryWriter(logdir=os.path.join(opt.tensorboard_dir, opt.name))
 
-    # create model & train & save the final checkpoint
+    # Choose model and train based on stage, then save the final checkpoint
     if opt.stage == 'GMM':
         model = GMM(opt)
         if not opt.checkpoint == '' and os.path.exists(opt.checkpoint):
@@ -215,8 +236,7 @@ def main():
             opt.checkpoint_dir, opt.name, 'gmm_final.pth'))
     elif opt.stage == 'TOM':
         # model = UnetGenerator(25, 4, 6, ngf=64, norm_layer=nn.InstanceNorm2d)  # CP-VTON
-        model = UnetGenerator(
-            26, 4, 6, ngf=64, norm_layer=nn.InstanceNorm2d)  # CP-VTON+
+        model = UnetGenerator(26, 4, 6, ngf=64, norm_layer=nn.InstanceNorm2d)  # CP-VTON+
         if not opt.checkpoint == '' and os.path.exists(opt.checkpoint):
             load_checkpoint(model, opt.checkpoint)
         train_tom(opt, train_loader, model, board)
@@ -226,7 +246,3 @@ def main():
         raise NotImplementedError('Model [%s] is not implemented' % opt.stage)
 
     print('Finished training %s, named: %s!' % (opt.stage, opt.name))
-
-
-if __name__ == "__main__":
-    main()

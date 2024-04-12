@@ -13,11 +13,14 @@ import json
 
 class CPDataset(data.Dataset):
     """Dataset for CP-VTON+.
+
+    This class loads and preprocesses data for the CP-VTON+ model.
+    It supports different stages (GMM and TOM) and datamodes (train, test).
     """
 
     def __init__(self, opt):
         super(CPDataset, self).__init__()
-        # base setting
+        # Base configuration
         self.opt = opt
         self.root = opt.dataroot
         self.datamode = opt.datamode  # train or test or self-defined
@@ -27,11 +30,12 @@ class CPDataset(data.Dataset):
         self.fine_width = opt.fine_width
         self.radius = opt.radius
         self.data_path = osp.join(opt.dataroot, opt.datamode)
+        # Define image transformations
         self.transform = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize((0.5,), (0.5,))])  # fix new version of torch (0.5,0.5,0.5) -> (0.5,)
+            transforms.Normalize((0.5,), (0.5,))])
 
-        # load data list
+        # Load image - cloth pairs from a text file.
         im_names = []
         c_names = []
         with open(osp.join(opt.dataroot, opt.data_list), 'r') as f:
@@ -46,6 +50,9 @@ class CPDataset(data.Dataset):
     def name(self):
         return "CPDataset"
 
+    def __len__(self):
+        return len(self.im_names)
+
     def __getitem__(self, index):
         c_name = self.c_names[index]
         im_name = self.im_names[index]
@@ -56,15 +63,15 @@ class CPDataset(data.Dataset):
             c = Image.open(osp.join(self.data_path, 'warp-cloth', im_name))    # c_name, if that is used when saved
             cm = Image.open(osp.join(self.data_path, 'warp-mask', im_name)).convert('L')    # c_name, if that is used when saved
 
-        c = self.transform(c)  # [-1,1]
+        c = self.transform(c)  # [-1, 1]
         cm_array = np.array(cm)
         cm_array = (cm_array >= 128).astype(np.float32)
-        cm = torch.from_numpy(cm_array)  # [0,1]
+        cm = torch.from_numpy(cm_array)  # [0, 1]
         cm.unsqueeze_(0)
 
-        # person image
+        # Load person image and apply transformation
         im = Image.open(osp.join(self.data_path, 'image', im_name))
-        im = self.transform(im)  # [-1,1]
+        im = self.transform(im)  # [-1, 1]
 
         """
         LIP labels
@@ -88,10 +95,11 @@ class CPDataset(data.Dataset):
          (85, 255, 170),  # 16=LeftLeg
          (170, 255, 85),  # 17=RightLeg
          (255, 255, 0),   # 18=LeftShoe
-         (255, 170, 0)    # 19=RightShoe
+         (255, 170, 0),   # 19=RightShoe
          (170, 170, 50)   # 20=Skin/Neck/Chest (Newly added after running dataset_neck_skin_correction.py)
-         ]
-         """
+        ]
+         
+        """
 
         # load parsing image
         parse_name = im_name.replace('.jpg', '.png')
@@ -141,7 +149,7 @@ class CPDataset(data.Dataset):
         # phand = torch.from_numpy(parse_hand)  # [0,1]
         pcm = torch.from_numpy(parse_cloth)  # [0,1]
 
-        # upper cloth
+        # Upper cloth
         im_c = im * pcm + (1 - pcm)  # [-1,1], fill 1 for other parts
         im_h = im * phead - (1 - phead)  # [-1,1], fill -1 for other parts
 
@@ -171,7 +179,7 @@ class CPDataset(data.Dataset):
             one_map = self.transform(one_map)
             pose_map[i] = one_map[0]
 
-        # just for visualization
+        # Just for visualization
         im_pose = self.transform(im_pose)
 
         # cloth-agnostic representation
@@ -203,30 +211,38 @@ class CPDataset(data.Dataset):
 
         return result
 
-    def __len__(self):
-        return len(self.im_names)
-
 
 class CPDataLoader(object):
+    """
+    This class creates a data loader for training/testing the CP-VTON+ model.
+    """
+
     def __init__(self, opt, dataset):
         super(CPDataLoader, self).__init__()
 
+        # Define sampler based on shuffle option
+        train_sampler = None
         if opt.shuffle:
             train_sampler = torch.utils.data.sampler.RandomSampler(dataset)
-        else:
-            train_sampler = None
 
         self.data_loader = torch.utils.data.DataLoader(
-            dataset, batch_size=opt.batch_size, shuffle=(
-                train_sampler is None),
-            num_workers=opt.workers, pin_memory=True, sampler=train_sampler)
+            dataset, 
+            batch_size=opt.batch_size, 
+            shuffle=(train_sampler is None),
+            num_workers=opt.workers, 
+            pin_memory=True, 
+            sampler=train_sampler
+        )
         self.dataset = dataset
+
+        # Initialize the data iterator
         self.data_iter = self.data_loader.__iter__()
 
     def next_batch(self):
         try:
             batch = self.data_iter.__next__()
         except StopIteration:
+            # Reset the iterator if reaching the end of the dataset
             self.data_iter = self.data_loader.__iter__()
             batch = self.data_iter.__next__()
 
@@ -238,17 +254,16 @@ if __name__ == "__main__":
 
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataroot", default="data")
-    parser.add_argument("--datamode", default="train")
+    parser.add_argument("--dataroot", default="data", help="Path to the directory containing the dataset")
+    parser.add_argument("--datamode", default="train", help="Data processing mode (train or test)")
     parser.add_argument("--stage", default="GMM")
     parser.add_argument("--data_list", default="train_pairs.txt")
     parser.add_argument("--fine_width", type=int, default=192)
     parser.add_argument("--fine_height", type=int, default=256)
     parser.add_argument("--radius", type=int, default=3)
-    parser.add_argument("--shuffle", action='store_true',
-                        help='shuffle input data')
+    parser.add_argument("--shuffle", action='store_true', help='Shuffle input data')
     parser.add_argument('-b', '--batch-size', type=int, default=4)
-    parser.add_argument('-j', '--workers', type=int, default=1)
+    parser.add_argument('-j', '--workers', type=int, default=1, help='Number of worker threads for data loading')
 
     opt = parser.parse_args()
     dataset = CPDataset(opt)

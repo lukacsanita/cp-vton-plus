@@ -14,24 +14,26 @@ from visualization import board_add_images, save_images
 
 
 def get_opt():
+    """
+    Parses command line arguments for testing options.
+
+    Returns:
+        opt (argparse.Namespace): Namespace containing parsed arguments.
+    """
+
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--name", default="GMM")
-    # parser.add_argument("--name", default="TOM")
+    parser.add_argument("--name", default="GMM", help="Name of the model (GMM or TOM)")
 
-    parser.add_argument("--gpu_ids", default="")
+    parser.add_argument("--gpu_ids", default="", help="Comma separated list of GPU ids")
     parser.add_argument('-j', '--workers', type=int, default=1)
     parser.add_argument('-b', '--batch-size', type=int, default=4)
 
     parser.add_argument("--dataroot", default="data")
-
-    # parser.add_argument("--datamode", default="train")
     parser.add_argument("--datamode", default="test")
 
-    parser.add_argument("--stage", default="GMM")
-    # parser.add_argument("--stage", default="TOM")
+    parser.add_argument("--stage", default="GMM", help="Model stage (GMM or TOM)")
 
-    # parser.add_argument("--data_list", default="train_pairs.txt")
     parser.add_argument("--data_list", default="test_pairs.txt")
     # parser.add_argument("--data_list", default="test_pairs_same.txt")
 
@@ -41,45 +43,50 @@ def get_opt():
     parser.add_argument("--grid_size", type=int, default=5)
 
     parser.add_argument('--tensorboard_dir', type=str,
-                        default='tensorboard', help='save tensorboard infos')
+                        default='tensorboard', help='Directory to save TensorBoard summaries')
 
     parser.add_argument('--result_dir', type=str,
-                        default='result', help='save result infos')
+                        default='result', help='Directory to save result images')
 
-    parser.add_argument('--checkpoint', type=str, default='checkpoints/GMM/gmm_final.pth', help='model checkpoint for test')
-    # parser.add_argument('--checkpoint', type=str, default='checkpoints/TOM/tom_final.pth', help='model checkpoint for test')
+    parser.add_argument('--checkpoint', type=str, default='checkpoints/GMM/gmm_final.pth', help='Path to the model checkpoint')
+    # parser.add_argument('--checkpoint', type=str, default='checkpoints/TOM/tom_final.pth', help='Path to the model checkpoint')
 
     parser.add_argument("--display_count", type=int, default=1)
-    parser.add_argument("--shuffle", action='store_true',
-                        help='shuffle input data')
+    parser.add_argument("--shuffle", action='store_true', help='Shuffle input data')
 
     opt = parser.parse_args()
     return opt
 
 
 def test_gmm(opt, test_loader, model, board):
+    """
+    Performs testing and visualization for the GMM model on a given dataset.
+
+    Args:
+        opt (argparse.Namespace): Parsed arguments.
+        test_loader (CPDataLoader): Dataloader for the test set.
+        model (nn.Module): GMM model.
+        board (SummaryWriter): TensorBoard summary writer.
+    """
+
+    # Move model to GPU and set evaluation mode
     model.cuda()
     model.eval()
 
-    name = opt.name
-    save_dir = os.path.join(opt.result_dir, name, opt.datamode)
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
+    # Create directories for different output images
+    save_dir = os.path.join(opt.result_dir, opt.name, opt.datamode)
+    os.makedirs(save_dir, exist_ok=True)
     warp_cloth_dir = os.path.join(save_dir, 'warp-cloth')
-    if not os.path.exists(warp_cloth_dir):
-        os.makedirs(warp_cloth_dir)
+    os.makedirs(warp_cloth_dir, exist_ok=True)
     warp_mask_dir = os.path.join(save_dir, 'warp-mask')
-    if not os.path.exists(warp_mask_dir):
-        os.makedirs(warp_mask_dir)
+    os.makedirs(warp_mask_dir, exist_ok=True)
     result_dir1 = os.path.join(save_dir, 'result_dir')
-    if not os.path.exists(result_dir1):
-        os.makedirs(result_dir1)
+    os.makedirs(result_dir1, exist_ok=True)
     overlayed_TPS_dir = os.path.join(save_dir, 'overlayed_TPS')
-    if not os.path.exists(overlayed_TPS_dir):
-        os.makedirs(overlayed_TPS_dir)
+    os.makedirs(overlayed_TPS_dir, exist_ok=True)
     warped_grid_dir = os.path.join(save_dir, 'warped_grid')
-    if not os.path.exists(warped_grid_dir):
-        os.makedirs(warped_grid_dir)
+    os.makedirs(warped_grid_dir, exist_ok=True)
+
     for step, inputs in enumerate(test_loader.data_loader):
         iter_start_time = time.time()
 
@@ -97,7 +104,7 @@ def test_gmm(opt, test_loader, model, board):
         shape_ori = inputs['shape_ori']  # original body shape without blurring
 
         grid, theta = model(agnostic, cm)
-        warped_cloth = F.grid_sample(c, grid, padding_mode='border', align_corners=True)  # fix new version of torch add align_corners=True
+        warped_cloth = F.grid_sample(c, grid, padding_mode='border', align_corners=True)
         warped_mask = F.grid_sample(cm, grid, padding_mode='zeros', align_corners=True)
         warped_grid = F.grid_sample(im_g, grid, padding_mode='zeros', align_corners=True)
         overlay = 0.7 * warped_cloth + 0.3 * im
@@ -122,35 +129,41 @@ def test_gmm(opt, test_loader, model, board):
 
 
 def test_tom(opt, test_loader, model, board):
+    """
+    Performs testing and visualization for the TOM model on a given dataset.
+
+    Args:
+        opt (object): Options object containing test parameters.
+        test_loader (object): PyTorch dataloader for test data.
+        model (nn.Module): TOM model.
+        board (object): TensorBoard summary writer.
+    """
+
+    # Move model to GPU and set evaluation mode
     model.cuda()
     model.eval()
 
+    # Create directories for different output images
     save_dir = os.path.join(opt.result_dir, opt.name, opt.datamode)
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
+    os.makedirs(save_dir, exist_ok=True)
     try_on_dir = os.path.join(save_dir, 'try-on')
-    if not os.path.exists(try_on_dir):
-        os.makedirs(try_on_dir)
+    os.makedirs(try_on_dir, exist_ok=True)
     p_rendered_dir = os.path.join(save_dir, 'p_rendered')
-    if not os.path.exists(p_rendered_dir):
-        os.makedirs(p_rendered_dir)
+    os.makedirs(p_rendered_dir, exist_ok=True)
     m_composite_dir = os.path.join(save_dir, 'm_composite')
-    if not os.path.exists(m_composite_dir):
-        os.makedirs(m_composite_dir)
+    os.makedirs(m_composite_dir, exist_ok=True)
     im_pose_dir = os.path.join(save_dir, 'im_pose')
-    if not os.path.exists(im_pose_dir):
-        os.makedirs(im_pose_dir)
+    os.makedirs(im_pose_dir, exist_ok=True)
     shape_dir = os.path.join(save_dir, 'shape')
-    if not os.path.exists(shape_dir):
-        os.makedirs(shape_dir)
+    os.makedirs(shape_dir, exist_ok=True)
     im_h_dir = os.path.join(save_dir, 'im_h')
-    if not os.path.exists(im_h_dir):
-        os.makedirs(im_h_dir)  # for test data
+    os.makedirs(im_h_dir, exist_ok=True)  # for test data
 
     print('Dataset size: %05d!' % (len(test_loader.dataset)), flush=True)
     for step, inputs in enumerate(test_loader.data_loader):
         iter_start_time = time.time()
 
+        # Extract data from dataloader
         im_names = inputs['im_name']
         im = inputs['image'].cuda()
         im_pose = inputs['pose_image']
@@ -161,13 +174,18 @@ def test_tom(opt, test_loader, model, board):
         c = inputs['cloth'].cuda()
         cm = inputs['cloth_mask'].cuda()
 
+        # Perform model inference
         # outputs = model(torch.cat([agnostic, c], 1))  # CP-VTON
         outputs = model(torch.cat([agnostic, c, cm], 1))  # CP-VTON+
+        
+        # Split outputs and apply activation functions
         p_rendered, m_composite = torch.split(outputs, 3, 1)
-        p_rendered = torch.tanh(p_rendered)  # fix torch.nn.functional.tanh depercated
-        m_composite = torch.sigmoid(m_composite)  # fix torch.nn.functional.sigmoid depercated
+        p_rendered = torch.tanh(p_rendered)
+        m_composite = torch.sigmoid(m_composite)
+        # Calculate final try-on image
         p_tryon = c * m_composite + p_rendered * (1 - m_composite)
 
+        # Define data for visualization
         visuals = [[im_h, shape, im_pose],
                    [c, 2*cm-1, m_composite],
                    [p_rendered, p_tryon, im]]
@@ -177,7 +195,7 @@ def test_tom(opt, test_loader, model, board):
         save_images(shape, im_names, shape_dir)
         save_images(im_pose, im_names, im_pose_dir)
         save_images(m_composite, im_names, m_composite_dir)
-        save_images(p_rendered, im_names, p_rendered_dir)  # For test data
+        save_images(p_rendered, im_names, p_rendered_dir)  # for test data
 
         if (step+1) % opt.display_count == 0:
             board_add_images(board, 'combine', visuals, step+1)
@@ -185,23 +203,25 @@ def test_tom(opt, test_loader, model, board):
             print('step: %8d, time: %.3f' % (step+1, t), flush=True)
 
 
-def main():
+
+if __name__ == "__main__":
+    # Parse user options
     opt = get_opt()
     print(opt)
+
     print("Start to test stage: %s, named: %s!" % (opt.stage, opt.name))
 
-    # create dataset
+    # Create dataset for testing
     test_dataset = CPDataset(opt)
 
-    # create dataloader
+    # Create dataloader
     test_loader = CPDataLoader(opt, test_dataset)
 
-    # visualization
-    if not os.path.exists(opt.tensorboard_dir):
-        os.makedirs(opt.tensorboard_dir)
+    # Setup TensorBoard for visualization
+    os.makedirs(opt.tensorboard_dir, exist_ok=True)
     board = SummaryWriter(logdir=os.path.join(opt.tensorboard_dir, opt.name))
 
-    # create model & test
+    # Choose model and run test based on stage
     if opt.stage == 'GMM':
         model = GMM(opt)
         load_checkpoint(model, opt.checkpoint)
@@ -217,7 +237,3 @@ def main():
         raise NotImplementedError('Model [%s] is not implemented' % opt.stage)
 
     print('Finished test %s, named: %s!' % (opt.stage, opt.name))
-
-
-if __name__ == "__main__":
-    main()
