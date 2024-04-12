@@ -1,54 +1,71 @@
-# CP-VTON+
+# Reimplementation of CP-VTON+
 
-### Original Author
+## Original author
+
+Project [page](https://minar09.github.io/cpvtonplus/)
+
+## Overview
+
+**CP-VTON+** is an advanced method for virtual try-on, allowing users to visualize how clothing items would look on them without physically wearing them. It combines clothing shape and texture preservation to create realistic virtual try-on results.
+
+It is a combination of consecutive training and testing of GMM (Geometric Matching Module) and TOM (Try-On Module).
+- **GMM** generates warped clothes according to the target human.
+- **TOM** blends the warped clothes outputs from **GMM** into the target human properties to generate the final try-on output
+
+## Running with Google Colab
+
+- Import the notebook `colab.ipynb` to **Google Colab**
+- Change the Colab Runtime Type to **GPU**
+- Execute all cells in the notebook to run the scripts for:
+	- Git clone this repo
+  	- Prepare model checkpoints and dataset.
+  	- Test the GMM and TOM models with test dataset.
+  	- Show the test results in `smart_result` directory.
+
+
+## Running locally
+
+### Installation
+
+1. Ensure you have Python 3 installed.
+
+2. Install the required packages using pip:
+	```
+	pip install -r requirements.txt
+	```
+
+3. Download and prepare the dataset:
+
+	- The full and processed dataset is available [here](https://1drv.ms/u/s!Ai8t8GAHdzVUiQQYX0azYhqIDPP6?e=4cpFTI).
+	- After downloading, unzip and move all contents to the `data` directory.
+
+4. Download and prepare the checkpoints:
+
+	- The saved checkpoints is available [here](https://1drv.ms/u/s!Ai8t8GAHdzVUiQA-o3C7cnrfGN6O?e=EaRiFP).
+	- After downloading, unzip and move  `data` directory.
+
+### End-to-end run Testing
+
+Run the testing end-to-end with GMM and TOM for the dataset
 
 ```
-@InProceedings{Minar_CPP_2020_CVPR_Workshops,
-	title={CP-VTON+: Clothing Shape and Texture Preserving Image-Based Virtual Try-On},
-	author={Minar, Matiur Rahman and Thai Thanh Tuan and Ahn, Heejune and Rosin, Paul and Lai, Yu-Kun},
-	booktitle = {The IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) Workshops},
-	month = {June},
-	year = {2020}
-}
+python e2e.py --mode test
 ```
 
-<br/>Project [page](https://minar09.github.io/cpvtonplus/)
-<br/>Saved/Pre-trained models: [Checkpoints](https://1drv.ms/u/s!Ai8t8GAHdzVUiQA-o3C7cnrfGN6O?e=EaRiFP)
-<br/>Dataset: [VITON_PLUS](https://1drv.ms/u/s!Ai8t8GAHdzVUiQQYX0azYhqIDPP6?e=4cpFTI)
-
-## what's new [Oct 2023]
-
-- Run `app.py` for testing or training. 
-- It can automatically run both commands (GMM and TOM) and take care of copying files. 
-- For training / testing 
-  - `subprocess.call(gmm_train/gmm_test, shell=True)`
-  - `subprocess.call(tom_train/tom_test, shell=True)`
-- fix all the deprecated warning of torch and resolve all isuses regarding dependency.
-- have a dedicated branch for only-cpu version.
-
-
-## Installation and Run
-
-1) create and virtual env.
-2) if you are running on cpu, then follow this branch. [CPU](https://github.com/ARajgor/cp-vton-plus/tree/cpu)
-3) if you have cuda then install torch with cuda. refer [torch](https://pytorch.org/get-started/locally/)
-
-after that, install the dependencies.
-```bash
-pip install -r requirements.txt
+View the Tensorboard traning logs:
+```
+tensorboard --logdir tensorboard
 ```
 
-### AutoRun
+### End-to-end run Training
 
-Run `python app.py`
+Run the training end-to-end with GMM and TOM for the dataset
 
-for tensorboard Run `tensorboard --logdir tensorboard`
+```
+python e2e.py --mode train
+```
 
-### Training
-
-https://github.com/minar09/cp-vton-plus#training
-
-### Testing
-
-https://github.com/minar09/cp-vton-plus#testing
-
+View the Tensorboard testing logs:
+```
+tensorboard --logdir tensorboard
+```
