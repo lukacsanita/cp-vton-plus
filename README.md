@@ -75,8 +75,8 @@ tensorboard --logdir tensorboard
 
 - Select a cloth image from the directory `data/test/cloth` and a person image from `data/test/image`.
 - Create a text file within the `data` directory that contains the filenames of the chosen person and cloth images on the same line (e.g. "demo_pair.txt" file contains "000174_0.jpg 016866_1.jpg").
-- Utilize this text file as the data list for executing the e2e.py script:
+- Utilize this text file as the **data list** for executing the `e2e.py` script:
 	```bash
 	python e2e.py --mode demo --data_list demo_pair.txt
 	```
-- Upon execution, the script will sequentially utilize two models in an end-to-end fashion and display the resulting output.
+- Upon execution, the script will sequentially utilize two models (GMM and TOM) in an end-to-end fashion and display the resulting output.
