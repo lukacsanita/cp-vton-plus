@@ -20,7 +20,7 @@ It is a combination of consecutive training and testing of GMM (Geometric Matchi
 	- Git clone this repo
   	- Prepare model checkpoints and dataset.
   	- Test the GMM and TOM models with test dataset.
-  	- Show the test results in `smart_result` directory.
+  	- Visualize the test results in `smart_result` directory.
 
 
 ## Running locally
