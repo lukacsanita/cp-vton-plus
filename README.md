@@ -8,7 +8,7 @@ Project [page](https://minar09.github.io/cpvtonplus/)
 
 **CP-VTON+** is an advanced method for virtual try-on, allowing users to visualize how clothing items would look on them without physically wearing them. It combines clothing shape and texture preservation to create realistic virtual try-on results.
 
-It is a combination of consecutive training and testing of GMM (Geometric Matching Module) and TOM (Try-On Module).
+This is a combination of training and testing of GMM (Geometric Matching Module) and TOM (Try-On Module).
 - **GMM** generates warped clothes according to the target human.
 - **TOM** blends the warped clothes outputs from **GMM** into the target human properties to generate the final try-on output
 
