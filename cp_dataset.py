@@ -32,8 +32,8 @@ class CPDataset(data.Dataset):
         self.data_path = osp.join(opt.dataroot, opt.datamode)
         # Define image transformations
         self.transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.5,), (0.5,))])
+            transforms.ToTensor(), # numpy/PIL → tensor, és [0, 255] → [0, 1],
+            transforms.Normalize((0.5,), (0.5,))]) # [0, 1] → [-1, 1].
 
         # Load image - cloth pairs from a text file.
         im_names = []
@@ -54,8 +54,8 @@ class CPDataset(data.Dataset):
         return len(self.im_names)
 
     def __getitem__(self, index):
-        c_name = self.c_names[index]
-        im_name = self.im_names[index]
+        c_name = self.c_names[index] #aktuális ruha neve
+        im_name = self.im_names[index] #aktuális személy képfájljának neve
         if self.stage == 'GMM':
             c = Image.open(osp.join(self.data_path, 'cloth', c_name))
             cm = Image.open(osp.join(self.data_path, 'cloth-mask', c_name)).convert('L')
@@ -63,15 +63,15 @@ class CPDataset(data.Dataset):
             c = Image.open(osp.join(self.data_path, 'warp-cloth', im_name))    # c_name, if that is used when saved
             cm = Image.open(osp.join(self.data_path, 'warp-mask', im_name)).convert('L')    # c_name, if that is used when saved
 
-        c = self.transform(c)  # [-1, 1]
-        cm_array = np.array(cm)
-        cm_array = (cm_array >= 128).astype(np.float32)
-        cm = torch.from_numpy(cm_array)  # [0, 1]
-        cm.unsqueeze_(0)
+        c = self.transform(c)  # [-1, 1] #A ruha képét átalakítjuk egy normalizált Tensor-rá, amely a modell bemenete lehet.
+        cm_array = np.array(cm) #A maszkot NumPy tömbbé konvertálja, 
+        cm_array = (cm_array >= 128).astype(np.float32) #binarizálja (128 küszöb)
+        cm = torch.from_numpy(cm_array)  # [0, 1] #Majd visszaalakítja PyTorch tensorrá, 
+        cm.unsqueeze_(0) #és dimenziót bővít ([1, Height, Width] alakra). 0 --> sort ad
 
         # Load person image and apply transformation
         im = Image.open(osp.join(self.data_path, 'image', im_name))
-        im = self.transform(im)  # [-1, 1]
+        im = self.transform(im)  # [-1, 1] #Átalakítja ugyanolyan transzformációval
 
         """
         LIP labels
@@ -105,21 +105,18 @@ class CPDataset(data.Dataset):
         parse_name = im_name.replace('.jpg', '.png')
         im_parse = Image.open(
             # osp.join(self.data_path, 'image-parse', parse_name)).convert('L')
-            osp.join(self.data_path, 'image-parse-new', parse_name)).convert('L')   # updated new segmentation
-        parse_array = np.array(im_parse)
-        im_mask = Image.open(
-            osp.join(self.data_path, 'image-mask', parse_name)).convert('L')
+            osp.join(self.data_path, 'image-parse-new', parse_name)).convert('L')   # updated new segmentation, Betölti a szegmentációs képet (image-parse-new), ahol minden pixel egy testrészhez tartozó címkét hordoz (pl. fej, kar, felsőruha).
+        parse_array = np.array(im_parse) # Betölti a testmaszkot (fekete-fehér bináris kép), ami a CP-VTON+ esetében meghatározza az ember alakját.
+        im_mask = Image.open(osp.join(self.data_path, 'image-mask', parse_name)).convert('L')
         mask_array = np.array(im_mask)
 
         # parse_shape = (parse_array > 0).astype(np.float32)  # CP-VTON body shape
         # Get shape from body mask (CP-VTON+)
-        parse_shape = (mask_array > 0).astype(np.float32)
+        parse_shape = (mask_array > 0).astype(np.float32) # A parse_shape a test kontúr bináris maszkja ([0,1] értékekkel).
 
+        #A parse_head egy bináris maszk a fejre és bizonyos testrészekre (GMM-nél kevesebb, TOM-nál több régió).
         if self.stage == 'GMM':
-            parse_head = (parse_array == 1).astype(np.float32) + \
-                (parse_array == 4).astype(np.float32) + \
-                (parse_array == 13).astype(
-                    np.float32)  # CP-VTON+ GMM input (reserved regions)
+            parse_head = (parse_array == 1).astype(np.float32) + (parse_array == 4).astype(np.float32) + (parse_array == 13).astype(np.float32)  # CP-VTON+ GMM input (reserved regions)
         else:
             parse_head = (parse_array == 1).astype(np.float32) + \
                 (parse_array == 2).astype(np.float32) + \
@@ -131,82 +128,112 @@ class CPDataset(data.Dataset):
                 (parse_array == 17).astype(
                 np.float32)  # CP-VTON+ TOM input (reserved regions)
 
-        parse_cloth = (parse_array == 5).astype(np.float32) + \
-            (parse_array == 6).astype(np.float32) + \
-            (parse_array == 7).astype(np.float32)    # upper-clothes labels
+        parse_cloth = (parse_array == 5).astype(np.float32) + (parse_array == 6).astype(np.float32) + (parse_array == 7).astype(np.float32)    # upper-clothes labels
 
-        # shape downsample
-        parse_shape_ori = Image.fromarray((parse_shape*255).astype(np.uint8))
+
+        # shape downsample ---------------------------------------------------------------------------------
+        # A parse_shape két lépéses le- és felskálázással simítja a maszkot. A shape, shape_ori, phead, pcm mind tensorrá alakul.
+            #parse_shape itt egy bináris maszk float32-ként 0 és 1 értékekkel, amely a test sziluettjét (vagy háttér nélküli test alakját) ábrázolja.
+            #egy normál (szürkeárnyalatos) képet csinál a test alakjának maszkjából.
+        parse_shape_ori = Image.fromarray((parse_shape*255).astype(np.uint8)) # felszorozza 255-tel → [0, 255] skálára teszi (képformátumhoz), --> astype(np.uint8) → 8 bites képformátumra konvertálja, --> Image.fromarray(...) → PIL képpé alakítja a numpy tömböt.
+            #A testmaszk képet lekicsinyíti 16-szorosára, bilineáris interpolációval (simább átskálázás).
         parse_shape = parse_shape_ori.resize(
             (self.fine_width//16, self.fine_height//16), Image.BILINEAR)
+
+            #A lekicsinyített képet újra visszanagyítja az eredeti méretre, Ez a trükk elmosódást hoz létre → "puhább", simított testforma képet eredményez → ez hasznos lehet a modellnek, hogy általános alakstruktúrát tanuljon a konkrét részletek helyett.
         parse_shape = parse_shape.resize(
             (self.fine_width, self.fine_height), Image.BILINEAR)
+
+            #Az eredeti, 255-ös skálán lévő bináris képet is átskálázza az elvárt fine_width és fine_height méretre. Ez a kép élesebb kontúrokat tartalmaz, nem volt kicsinyítve.
         parse_shape_ori = parse_shape_ori.resize(
             (self.fine_width, self.fine_height), Image.BILINEAR)
+            
+            #Mindkét képet átviszi egy transform lépésen, amit a konstruktorban a transforms.Compose([...]) definiál. Ez normálisan a következőket tartalmazza: - ToTensor() → numpy/PIL → tensor, és [0, 255] → [0, 1],  - Normalize((0.5,), (0.5,)) → [0, 1] → [-1, 1].
         shape_ori = self.transform(parse_shape_ori)  # [-1,1]
         shape = self.transform(parse_shape)  # [-1,1]
-        phead = torch.from_numpy(parse_head)  # [0,1]
+        
+        phead = torch.from_numpy(parse_head)  # [0,1] -- egyszerűen torch.Tensor-rá alakítja.
         # phand = torch.from_numpy(parse_hand)  # [0,1]
-        pcm = torch.from_numpy(parse_cloth)  # [0,1]
+        pcm = torch.from_numpy(parse_cloth)  # [0,1] -- A ruha maszkolt részét (egy bináris maszk [1, H, W], ami 1 ott, ahol ruha van, és 0 máshol) is átkonvertálja Tensorrá.
 
-        # Upper cloth
-        im_c = im * pcm + (1 - pcm)  # [-1,1], fill 1 for other parts
-        im_h = im * phead - (1 - phead)  # [-1,1], fill -1 for other parts
+        #-------------------------------------------------------------------------------------------------------
+        # Upper cloth -- Kivágja a ruhát az eredeti képből
+        im_c = im * pcm + (1 - pcm)  # [-1,1], fill 1 for other parts, ruharégió + "fehér" háttér:
+            #im * pcm: megtartja csak a ruhát az eredeti képből (mert ott, ahol pcm == 1, az im pixele megmarad, máshol lenullázódik)
+            #(1 - pcm): ott 1, ahol nem ruha → ha ezt hozzáadjuk, akkor ezek a pixelek fehér vagy 1 értéket kapnak (attól függően, mi a formátum)
+            #Tehát a végeredmény: Ahol ruha van: megtartja az eredeti színeket az im-ből, Ahol nincs ruha: a háttér világos vagy fehér lesz (függően a normalizálástól)
+        
+        im_h = im * phead - (1 - phead)  # [-1,1], fill -1 for other parts, fej régió + "-1" háttér (fekete)
 
-        # load pose points
-        pose_name = im_name.replace('.jpg', '_keypoints.json')
+        
+        # load pose points ---------------------------------------------------------------------------
+        pose_name = im_name.replace('.jpg', '_keypoints.json') # Az aktuális képfájl nevéből (im_name, pl. 00001_00.jpg) a hozzá tartozó OpenPose keypoint fájl nevét generálja: 00001_00_keypoints.json.
+        
         with open(osp.join(self.data_path, 'pose', pose_name), 'r') as f:
             pose_label = json.load(f)
-            pose_data = pose_label['people'][0]['pose_keypoints']
-            pose_data = np.array(pose_data)
-            pose_data = pose_data.reshape((-1, 3))
+            pose_data = pose_label['people'][0]['pose_keypoints'] # Az OpenPose mindig 'people' tömböt ad vissza (még akkor is, ha csak 1 ember van), így az első embert ([0]) használja. pose_keypoints egy hosszú lista: minden testrész 3 értékkel szerepel benne: x, y, confidence.
+            pose_data = np.array(pose_data) # Átalakítja a JSON-ból kiolvasott listát egy (N, 3) alakú NumPy tömbbé. N = 18 keypoint (vagy több, ha hands/face is lenne), oszlopok: x, y, conf.
+            pose_data = pose_data.reshape((-1, 3)) # ezt átalakítod egy (N, 3) méretű tömbbé a reshape-pel --> shape[0] → a kulcspontok száma.
+            #Az OpenPose által visszaadott pose_keypoints lista minden egyes kulcspontot (pl. fej, nyak, váll, térd) egy 3 értékből álló egységként ír le: [x, y, confidence] → tehát: a kulcspont helye és a pontossága.
+            #Ez a lista 3 * N hosszú, ahol N a kulcspontok száma.
 
-        point_num = pose_data.shape[0]
+        #Létrehoz egy pose_map nevű tenzort, amelyben minden testrészhez (pl. fej, váll, térd) lesz egy külön "csatorna" (mint egy fekete-fehér kép). Méret: [point_num, H, W] (pl. [18, 256, 192]), értéke alapból 0.
+        point_num = pose_data.shape[0] #testkulcspontok (keypoints) száma
         pose_map = torch.zeros(point_num, self.fine_height, self.fine_width)
+        
         r = self.radius
-        im_pose = Image.new('L', (self.fine_width, self.fine_height))
-        pose_draw = ImageDraw.Draw(im_pose)
+        im_pose = Image.new('L', (self.fine_width, self.fine_height)) # egy összesített fekete-fehér PIL kép, ahova majd minden pontot kirajzol.
+        pose_draw = ImageDraw.Draw(im_pose) #ehhez hoz létre rajzoló objektumot.
+            #Végigmegy minden kulcsponton (keypoint): pl. nyak, váll, könyök, térd, boka... Létrehoz egy új fekete-fehér képet minden ponthoz: one_map.
         for i in range(point_num):
             one_map = Image.new('L', (self.fine_width, self.fine_height))
             draw = ImageDraw.Draw(one_map)
             pointx = pose_data[i, 0]
             pointy = pose_data[i, 1]
-            if pointx > 1 and pointy > 1:
+            if pointx > 1 and pointy > 1:  # Ha a keypoint értelmes (nem 0 vagy 1, tehát nem hiányzik), akkor egy fehér négyzetet rajzol a képen a pont körül
+                #Két helyre is rajzol: -- one_map → ez egyetlen kulcspont maszkja, --im_pose → ez az összes kulcspont közös képe (diagnosztikához, megjelenítéshez).
                 draw.rectangle((pointx-r, pointy-r, pointx +
                                 r, pointy+r), 'white', 'white')
                 pose_draw.rectangle(
                     (pointx-r, pointy-r, pointx+r, pointy+r), 'white', 'white')
-            one_map = self.transform(one_map)
-            pose_map[i] = one_map[0]
-
-        # Just for visualization
+                
+            one_map = self.transform(one_map) #A one_map képet (csak 1 kulcspont maszkja) átkonvertálja Tensorrá a szokásos transformmal
+            pose_map[i] = one_map[0] #A pose_map[i] helyére beteszi.
+            #Minden egyes pózpont egy csatornát kap, ahol csak ott van érték, ahol a pont megjelent.
+            
+        #Ez a rész létrehozza a pose_map tenzort: Mérete: [point_num, H, W] → minden kulcspont (pl. nyak, térd, stb.) külön csatornában. Ezek a csatornák fehér négyzeteket tartalmaznak a kulcspont helyén.
+        #Ez segíti a modellt, hogy a testtartás alapján döntse el, hová illeszkedjen a ruha (pl. ha kezet felemeli a személy, a ruha ujja is másképp álljon).
+        #--------------------------------------------------------------------
+        
+        # Just for visualization, nem megy be a modellbe
         im_pose = self.transform(im_pose)
 
-        # cloth-agnostic representation
-        agnostic = torch.cat([shape, im_h, pose_map], 0)
+        # cloth-agnostic representation---------------------------------------
+        # A ruha-agnosztikus reprezentáció (clothing-agnostic representation) 20 csatornás tensor: -shape (éles emberi forma): 1 csatorna, -im_h (fej): 3 csatorna (RGB fej), -pose_map: 18 csatorna
+        agnostic = torch.cat([shape, im_h, pose_map], 0) # Ezeket torch.cat([...], 0) összeilleszti a csatorna dimenzióban → [20, H, W] alakú tensor. ; nem biztos hogy 20
 
-        if self.stage == 'GMM':
+        if self.stage == 'GMM': # Ha épp a GMM (ruha-igazítás) fázisban vagyunk: Beolvas egy rácskép-et (grid.png) – ez egy geometriai referencia, amit vizualizációra és háborítások figyelésére használnak. 
             im_g = Image.open('grid.png')
-            im_g = self.transform(im_g)
+            im_g = self.transform(im_g) # Átalakítja tenzorrá.
         else:
             im_g = ''
 
-        pcm.unsqueeze_(0)  # CP-VTON+
+        pcm.unsqueeze_(0)  # CP-VTON+, parse_cloth_mask, vagyis a képen lévő eredeti ruha maszkja (bináris). .unsqueeze_(0) hozzáad egy batch dimenziót → alak: [1, H, W],  Ez hasznos lehet, ha a modellt batch-es feldolgozásra készítjük fel.
 
         result = {
-            'c_name':   c_name,     # for visualization
-            'im_name':  im_name,    # for visualization or ground truth
-            'cloth':    c,          # for input
-            'cloth_mask':     cm,   # for input
-            'image':    im,         # for visualization
-            'agnostic': agnostic,   # for input
-            'parse_cloth': im_c,    # for ground truth
-            'shape': shape,         # for visualization
-            'head': im_h,           # for visualization
-            'pose_image': im_pose,  # for visualization
-            'grid_image': im_g,     # for visualization
-            'parse_cloth_mask': pcm,     # for CP-VTON+, TOM input
-            'shape_ori': shape_ori,     # original body shape without resize
+            'c_name':   c_name,     # for visualization, a ruhadarab fájlneve (str)
+            'im_name':  im_name,    # for visualization or ground truth, a személy (modell) képfájlneve - str
+            'cloth':    c,          # for input, az input ruhadarab RGB képe (Tensor [3, H, W])
+            'cloth_mask':     cm,   # for input(GMM), előfeldolgozáshoz,  bináris maszk a ruhához (hol van ruha, hol nem) (Tensor [1, H, W])
+            'image':    im,         # for visualization vagy ha supervision kell, az eredeti személy képe (egész test, ruhában) (Tensor [3, H, W])
+            'agnostic': agnostic,   # for input, 1 csatorna: shape – sziluett, 3 csatorna: head – fej RGB-ben, 18 csatorna: pose_map – testkulcspontok
+            'parse_cloth': im_c,    # for ground truth, az eredeti képen lévő ruha területének kivágott RGB képe (Tensor [3, H, W])
+            'shape': shape,         # for visualization, a személy sziluettje (bináris maszk) (Tensor [1, H, W])
+            'head': im_h,           # for visualization, a fej RGB kivágása az eredeti képből (Tensor [3, H, W])
+            'pose_image': im_pose,  # for visualization, kulcspontokból generált fekete-fehér kép (Tensor [1, H, W])
+            'grid_image': im_g,     # for visualization, rácskép, ha a GMM szakaszban vagyunk
+            'parse_cloth_mask': pcm,     # for CP-VTON+, TOM input,  személy eredeti ruhájának bináris maszkja
+            'shape_ori': shape_ori,     # original body shape without resize,  az eredeti testforma (sziluett), de nem downsample-ölve, tehát teljes felbontásban
         }
 
         return result
@@ -225,12 +252,12 @@ class CPDataLoader(object):
         if opt.shuffle:
             train_sampler = torch.utils.data.sampler.RandomSampler(dataset)
 
-        self.data_loader = torch.utils.data.DataLoader(
+        self.data_loader = torch.utils.data.DataLoader( # Meghívja a CPDataset.__getitem__(index)-et minden egyes elemre,
             dataset, 
-            batch_size=opt.batch_size, 
+            batch_size=opt.batch_size, # Ha batch_size=4, akkor 4-szer hívja meg a __getitem__() metódust,
             shuffle=(train_sampler is None),
-            num_workers=opt.workers, 
-            pin_memory=True, 
+            num_workers=opt.workers, #mennyi paralel adatbetöltő szálat (num_workers) használjon
+            pin_memory=True, #legyen-e GPU-memóriás gyorsítás
             sampler=train_sampler
         )
         self.dataset = dataset
