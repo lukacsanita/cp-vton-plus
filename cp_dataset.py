@@ -58,7 +58,7 @@ class CPDataset(data.Dataset):
         im_name = self.im_names[index] #aktuális személy képfájljának neve
         if self.stage == 'GMM':
             c = Image.open(osp.join(self.data_path, 'cloth', c_name))
-            cm = Image.open(osp.join(self.data_path, 'cloth-mask', c_name)).convert('L')
+            cm = Image.open(osp.join(self.data_path, 'cloth-mask', c_name)).convert('L') #grayscale
         else:
             c = Image.open(osp.join(self.data_path, 'warp-cloth', im_name))    # c_name, if that is used when saved
             cm = Image.open(osp.join(self.data_path, 'warp-mask', im_name)).convert('L')    # c_name, if that is used when saved
@@ -209,8 +209,8 @@ class CPDataset(data.Dataset):
         im_pose = self.transform(im_pose)
 
         # cloth-agnostic representation---------------------------------------
-        # A ruha-agnosztikus reprezentáció (clothing-agnostic representation) 20 csatornás tensor: -shape (éles emberi forma): 1 csatorna, -im_h (fej): 3 csatorna (RGB fej), -pose_map: 18 csatorna
-        agnostic = torch.cat([shape, im_h, pose_map], 0) # Ezeket torch.cat([...], 0) összeilleszti a csatorna dimenzióban → [20, H, W] alakú tensor. ; nem biztos hogy 20
+        # A ruha-agnosztikus reprezentáció (clothing-agnostic representation) 22 (vagy több) csatornás tensor: -shape (éles emberi forma): 1 csatorna, -im_h (fej): 3 csatorna (RGB fej), -pose_map: 18 csatorna (valszeg több ld. LIP komment)
+        agnostic = torch.cat([shape, im_h, pose_map], 0) # Ezeket torch.cat([...], 0) összeilleszti a csatorna dimenzióban → [20, H, W] alakú tensor. 
 
         if self.stage == 'GMM': # Ha épp a GMM (ruha-igazítás) fázisban vagyunk: Beolvas egy rácskép-et (grid.png) – ez egy geometriai referencia, amit vizualizációra és háborítások figyelésére használnak. 
             im_g = Image.open('grid.png')
