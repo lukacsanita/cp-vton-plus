@@ -63,11 +63,11 @@ class CPDataset(data.Dataset):
             c = Image.open(osp.join(self.data_path, 'warp-cloth', im_name))    # c_name, if that is used when saved
             cm = Image.open(osp.join(self.data_path, 'warp-mask', im_name)).convert('L')    # c_name, if that is used when saved
 
-        c = self.transform(c)  # [-1, 1] #A ruha képét átalakítjuk egy normalizált Tensor-rá, amely a modell bemenete lehet.
-        cm_array = np.array(cm) #A maszkot NumPy tömbbé konvertálja, 
-        cm_array = (cm_array >= 128).astype(np.float32) #binarizálja (128 küszöb)
-        cm = torch.from_numpy(cm_array)  # [0, 1] #Majd visszaalakítja PyTorch tensorrá, 
-        cm.unsqueeze_(0) #és dimenziót bővít ([1, Height, Width] alakra). 0 --> sort ad
+        c = self.transform(c)  # [-1, 1] # A ruha képét átalakítjuk egy normalizált Tensor-rá, amely a modell bemenete lehet.
+        cm_array = np.array(cm)                         # A maszkot NumPy tömbbé konvertálja, 
+        cm_array = (cm_array >= 128).astype(np.float32) # binarizálja (128 küszöb)
+        cm = torch.from_numpy(cm_array)                  # [0, 1] # Majd visszaalakítja PyTorch tensorrá, 
+        cm.unsqueeze_(0)                                 # és dimenziót bővít ([1, Height, Width] alakra). 0 --> sort ad
 
         # Load person image and apply transformation
         im = Image.open(osp.join(self.data_path, 'image', im_name))
@@ -136,6 +136,7 @@ class CPDataset(data.Dataset):
             #parse_shape itt egy bináris maszk float32-ként 0 és 1 értékekkel, amely a test sziluettjét (vagy háttér nélküli test alakját) ábrázolja.
             #egy normál (szürkeárnyalatos) képet csinál a test alakjának maszkjából.
         parse_shape_ori = Image.fromarray((parse_shape*255).astype(np.uint8)) # felszorozza 255-tel → [0, 255] skálára teszi (képformátumhoz), --> astype(np.uint8) → 8 bites képformátumra konvertálja, --> Image.fromarray(...) → PIL képpé alakítja a numpy tömböt.
+            
             #A testmaszk képet lekicsinyíti 16-szorosára, bilineáris interpolációval (simább átskálázás).
         parse_shape = parse_shape_ori.resize(
             (self.fine_width//16, self.fine_height//16), Image.BILINEAR)
@@ -162,7 +163,8 @@ class CPDataset(data.Dataset):
             #im * pcm: megtartja csak a ruhát az eredeti képből (mert ott, ahol pcm == 1, az im pixele megmarad, máshol lenullázódik)
             #(1 - pcm): ott 1, ahol nem ruha → ha ezt hozzáadjuk, akkor ezek a pixelek fehér vagy 1 értéket kapnak (attól függően, mi a formátum)
             #Tehát a végeredmény: Ahol ruha van: megtartja az eredeti színeket az im-ből, Ahol nincs ruha: a háttér világos vagy fehér lesz (függően a normalizálástól)
-        
+
+        # fejet is kivágja
         im_h = im * phead - (1 - phead)  # [-1,1], fill -1 for other parts, fej régió + "-1" háttér (fekete)
 
         
@@ -252,12 +254,14 @@ class CPDataLoader(object):
         if opt.shuffle:
             train_sampler = torch.utils.data.sampler.RandomSampler(dataset)
 
+        # A DataLoader a híd a nyers adatok (Dataset) és a tanítási ciklus között. Segít a batch-elésben, shuffl-olásban és hatékony adatbetöltésben.
+        # torch.utils.data.DataLoader a PyTorch egyik leggyakrabban használt osztálya, amely a dataset-ek (adathalmazok) kezelését és betöltését könnyíti meg gépi tanulási modellekhez.
         self.data_loader = torch.utils.data.DataLoader( # Meghívja a CPDataset.__getitem__(index)-et minden egyes elemre,
             dataset, 
             batch_size=opt.batch_size, # Ha batch_size=4, akkor 4-szer hívja meg a __getitem__() metódust,
             shuffle=(train_sampler is None),
-            num_workers=opt.workers, #mennyi paralel adatbetöltő szálat (num_workers) használjon
-            pin_memory=True, #legyen-e GPU-memóriás gyorsítás
+            num_workers=opt.workers, # mennyi paralel adatbetöltő szálat (num_workers) használjon
+            pin_memory=True, # legyen-e GPU-memóriás gyorsítás
             sampler=train_sampler
         )
         self.dataset = dataset
