@@ -29,6 +29,7 @@ if __name__ == "__main__":
     subprocess.call(gmm_run, shell=True)
 
     # Define source and destination paths for warp data
+    # A GMM kimenetéből származó warp-cloth és warp-mask mappákat bemásolja a TOM-hoz, mert az ezekből generálja a végső képet.
     warp_cloth_src = "result/GMM/test/warp-cloth"
     warp_mask_src = "result/GMM/test/warp-mask"
     warp_cloth_dst = f"data/{opt.mode}/warp-cloth"
@@ -54,6 +55,8 @@ if __name__ == "__main__":
     print("ALL MODELS PROCESS FINISHED")
     
     # Show result image when demo
+    # Ha --mode demo, akkor megnyitja a result/TOM/test/try-on/ mappából az elkészült képet, és megmutatja egy OpenCV ablakban.
+    # Ez helyi gépen működik, de Google Colabban nem fog megjelenni az imshow() ablak, ott máshogy kell képet kirajzolni (pl. matplotlib-tel).
     if opt.mode == "demo":
         demo_pair_path = f'data/{opt.data_list}'
         pair = open(demo_pair_path).readlines()[0]
@@ -64,7 +67,7 @@ if __name__ == "__main__":
         # Read the image with opencv
         img = cv2.imread(result_img_name)
         # Show the image with window name
-        cv2.imshow("Try-on", img)
+        cv2.imshow("Try-on", img) # colab: matplotlib.pyplot.imshow()
         # Window waits until user presses a key
         print("\n PRESS ANY KEY TO CLOSE THE WINDOW")
         cv2.waitKey(0)
