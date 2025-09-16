@@ -12,6 +12,7 @@ from networks import GMM, UnetGenerator, load_checkpoint
 from tensorboardX import SummaryWriter
 from visualization import board_add_images, save_images
 
+# Automatikusan lefuttatni az inference folyamatot egy adott tesztadatkészleten, és menteni a vizuális eredményeket képként (pl. warpolt ruha, próbálás eredménye stb.).
 
 def get_opt():
     """
