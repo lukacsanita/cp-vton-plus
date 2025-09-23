@@ -7,6 +7,7 @@ import cv2
 
 import matplotlib.pyplot as plt
 import numpy as np
+from google.colab.patches import cv2_imshow
 
 if __name__ == "__main__":
     # Parse user options
@@ -73,9 +74,14 @@ if __name__ == "__main__":
         result_img_name = os.path.join(result_dir, person + "_0.jpg")
         print("*")
 
+#colabos cv2
+        img = cv2.imread(result_img_name)
+        cv2_imshow(img)
+
 #matplotlib
         img = np.asarray(Image.open(result_img_name))
         imgplot = plt.imshow(img)
+        plt.show()
        
 #colab miatt nem ez
         # Read the image with opencv
