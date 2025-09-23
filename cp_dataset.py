@@ -33,7 +33,7 @@ class CPDataset(data.Dataset):
         # Define image transformations
         self.transform = transforms.Compose([
             transforms.ToTensor(), # numpy/PIL → tensor, és [0, 255] → [0, 1],
-            transforms.Normalize((0.5,), (0.5,))]) # [0, 1] → [-1, 1].
+            transforms.Normalize((0.5,), (0.5,))]) # [0, 1] → [-1, 1]. 
 
         # Load image - cloth pairs from a text file.
         im_names = []
