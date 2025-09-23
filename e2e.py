@@ -59,12 +59,19 @@ if __name__ == "__main__":
     # Ha --mode demo, akkor megnyitja a result/TOM/test/try-on/ mappából az elkészült képet, és megmutatja egy OpenCV ablakban.
     # Ez helyi gépen működik, de Google Colabban nem fog megjelenni az imshow() ablak, ott máshogy kell képet kirajzolni (pl. matplotlib-tel).
     if opt.mode == "demo":
+        print("Entered if")
         demo_pair_path = f'data/{opt.data_list}'
+        print("*")
         pair = open(demo_pair_path).readlines()[0]
+        print("*")
         dst, src = pair.strip().split(' ')
+        print("*")
         person = dst.split('_')[0]
+        print("*")
         result_dir = "result/TOM/test/try-on"
+        print("*")
         result_img_name = os.path.join(result_dir, person + "_0.jpg")
+        print("*")
 
 #matplotlib
         img = np.asarray(Image.open(result_img_name))
