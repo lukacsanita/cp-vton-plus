@@ -102,8 +102,8 @@ def train_gmm(opt, train_loader, model, board):
 
         # loss for warped cloth
         Lwarp = criterionL1(warped_cloth, im_c)
-        # Actual loss function as in the paper given below
-        # Lwarp = criterionL1(warped_mask, cm)
+        # Actual loss function as in the paper given below (comment out previous line and uncomment below to train as per the paper)
+        # Lwarp = criterionL1(warped_mask, cm) # loss for warped mask thanks @xuxiaochun025 for fixing the git code.
         
         # grid regularization loss
         Lgic = gicloss(grid)
