@@ -5,7 +5,8 @@ import argparse
 import os
 import cv2
 
-
+import matplotlib.pyplot as plt
+import numpy as np
 
 if __name__ == "__main__":
     # Parse user options
@@ -64,12 +65,18 @@ if __name__ == "__main__":
         person = dst.split('_')[0]
         result_dir = "result/TOM/test/try-on"
         result_img_name = os.path.join(result_dir, person + "_0.jpg")
+
+#matplotlib
+        img = np.asarray(Image.open(result_img_name))
+        imgplot = plt.imshow(img)
+       
+#colab miatt nem ez
         # Read the image with opencv
-        img = cv2.imread(result_img_name)
+        #img = cv2.imread(result_img_name)
         # Show the image with window name
-        cv2.imshow("Try-on", img) # colab: matplotlib.pyplot.imshow()
+        #cv2.imshow("Try-on", img) # colab: matplotlib.pyplot.imshow()
         # Window waits until user presses a key
-        print("\n PRESS ANY KEY TO CLOSE THE WINDOW")
-        cv2.waitKey(0)
+        #print("\n PRESS ANY KEY TO CLOSE THE WINDOW")
+        #cv2.waitKey(0)
         # Finally destroy/close all open windows
-        cv2.destroyAllWindows()
+        #cv2.destroyAllWindows()
