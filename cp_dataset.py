@@ -74,6 +74,7 @@ class CPDataset(data.Dataset):
         im = self.transform(im)  # [-1, 1] #Átalakítja ugyanolyan transzformációval
 
         """
+        személy képének szegmentációja (CIHP / Graphonomy output)
         LIP labels
         
         [(0, 0, 0),    # 0=Background
