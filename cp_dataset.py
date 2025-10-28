@@ -106,7 +106,8 @@ class CPDataset(data.Dataset):
         parse_name = im_name.replace('.jpg', '.png')
         im_parse = Image.open(
             # osp.join(self.data_path, 'image-parse', parse_name)).convert('L')
-            osp.join(self.data_path, 'image-parse-new', parse_name)).convert('L')   # updated new segmentation, Betölti a szegmentációs képet (image-parse-new), ahol minden pixel egy testrészhez tartozó címkét hordoz (pl. fej, kar, felsőruha).
+            # osp.join(self.data_path, 'image-parse-new', parse_name)).convert('L')   # updated new segmentation, Betölti a szegmentációs képet (image-parse-new), ahol minden pixel egy testrészhez tartozó címkét hordoz (pl. fej, kar, felsőruha).
+            osp.join(self.data_path, 'image-parse-new', 'person_gray.png')).convert('L')   # updated new segmentation, Betölti a szegmentációs képet (image-parse-new), ahol minden pixel egy testrészhez tartozó címkét hordoz (pl. fej, kar, felsőruha).
         parse_array = np.array(im_parse) # Betölti a testmaszkot (fekete-fehér bináris kép), ami a CP-VTON+ esetében meghatározza az ember alakját.
         im_mask = Image.open(osp.join(self.data_path, 'image-mask', parse_name)).convert('L')
         mask_array = np.array(im_mask)
