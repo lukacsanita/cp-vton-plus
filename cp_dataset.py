@@ -124,11 +124,13 @@ class CPDataset(data.Dataset):
                 (parse_array == 2).astype(np.float32) + \
                 (parse_array == 4).astype(np.float32) + \
                 (parse_array == 9).astype(np.float32) + \
+                (parse_array == 10).astype(np.float32) + \
                 (parse_array == 12).astype(np.float32) + \
                 (parse_array == 13).astype(np.float32) + \
                 (parse_array == 16).astype(np.float32) + \
-                (parse_array == 17).astype(
-                np.float32)  # CP-VTON+ TOM input (reserved regions)
+                (parse_array == 17).astype(np.float32) + \
+                (parse_array == 18).astype(np.float32) + \
+                (parse_array == 19).astype(np.float32) # CP-VTON+ TOM input (reserved regions)
 
         parse_cloth = (parse_array == 5).astype(np.float32) + (parse_array == 6).astype(np.float32) + (parse_array == 7).astype(np.float32)    # upper-clothes labels
 
