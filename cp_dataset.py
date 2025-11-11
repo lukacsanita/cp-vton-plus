@@ -123,8 +123,7 @@ class CPDataset(data.Dataset):
             parse_head = (parse_array == 1).astype(np.float32) + \
                 (parse_array == 2).astype(np.float32) + \
                 (parse_array == 4).astype(np.float32) + \
-                (parse_array == 9).astype(np.float32) + \
-                (parse_array == 10).astype(np.float32) + \
+                (parse_array == 9).astype(np.float32) + \                
                 (parse_array == 12).astype(np.float32) + \
                 (parse_array == 13).astype(np.float32) + \
                 (parse_array == 16).astype(np.float32) + \
