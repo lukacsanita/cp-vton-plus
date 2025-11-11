@@ -55,41 +55,23 @@ if __name__ == "__main__":
     total_time = time.time() - t
     print(f"TOTAL TIME: {total_time} seconds")
     print("ALL MODELS PROCESS FINISHED")
-    print("before if")
     # Show result image when demo
     # Ha --mode demo, akkor megnyitja a result/TOM/test/try-on/ mappából az elkészült képet, és megmutatja egy OpenCV ablakban.
-    # Ez helyi gépen működik, de Google Colabban nem fog megjelenni az imshow() ablak, ott máshogy kell képet kirajzolni (pl. matplotlib-tel).
+    # Ez helyi gépen működik, de Google Colabban nem fog megjelenni az imshow() ablak
     if opt.mode == "demo":
-        print("Entered if")
         demo_pair_path = f'data/{opt.data_list}'
-        print("*")
         pair = open(demo_pair_path).readlines()[0]
-        print("*")
         dst, src = pair.strip().split(' ')
-        print("*")
         person = dst.split('_')[0]
-        print("*")
         result_dir = "result/TOM/test/try-on"
-        print("*")
         result_img_name = os.path.join(result_dir, person + "_0.jpg")
-        print("*")
 
-#colabos cv2
-        img = cv2.imread(result_img_name)
-        cv2_imshow(img)
-
-#matplotlib
-        img = np.asarray(Image.open(result_img_name))
-        imgplot = plt.imshow(img)
-        plt.show()
-       
-#colab miatt nem ez
         # Read the image with opencv
-        #img = cv2.imread(result_img_name)
+        img = cv2.imread(result_img_name)
         # Show the image with window name
-        #cv2.imshow("Try-on", img) # colab: matplotlib.pyplot.imshow()
+        cv2.imshow("Try-on", img) # colab: matplotlib.pyplot.imshow()
         # Window waits until user presses a key
-        #print("\n PRESS ANY KEY TO CLOSE THE WINDOW")
-        #cv2.waitKey(0)
+        print("\n PRESS ANY KEY TO CLOSE THE WINDOW")
+        cv2.waitKey(0)
         # Finally destroy/close all open windows
-        #cv2.destroyAllWindows()
+        cv2.destroyAllWindows()
