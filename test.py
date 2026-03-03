@@ -177,7 +177,8 @@ def test_tom(opt, test_loader, model, board):
 
         # Perform model inference
         # outputs = model(torch.cat([agnostic, c], 1))  # CP-VTON
-        outputs = model(torch.cat([agnostic, c, cm], 1))  # CP-VTON+
+        outputs = model(torch.cat([agnostic, c, cm], 1))  # CP-VTON+, chanel (1) dimenzió mentén illeszti össze őket: [Batch, 26, H, W]
+            # model (GMM vagy UnetGenerator): lefuttatja az összefűzött a test-, póz- és ruha-információkon ([agnostic, c, cm]) a teljes Try-On neurális hálózatot
         
         # Split outputs and apply activation functions
         p_rendered, m_composite = torch.split(outputs, 3, 1)
