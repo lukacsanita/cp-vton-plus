@@ -32,8 +32,8 @@ class CPDataset(data.Dataset):
         self.data_path = osp.join(opt.dataroot, opt.datamode)
         # Define image transformations
         self.transform = transforms.Compose([
-            transforms.ToTensor(), # numpy/PIL → tensor, és [0, 255] → [0, 1],
-            transforms.Normalize((0.5,), (0.5,))]) # [0, 1] → [-1, 1]. 
+            transforms.ToTensor(), # numpy/PIL -> tensor, és [0, 255] -> [0, 1],
+            transforms.Normalize((0.5,), (0.5,))]) # [0, 1] -> [-1, 1]. 
 
         # Load image - cloth pairs from a text file.
         im_names = []
@@ -138,13 +138,13 @@ class CPDataset(data.Dataset):
         # A parse_shape két lépéses le- és felskálázással simítja a maszkot. A shape, shape_ori, phead, pcm mind tensorrá alakul.
             #parse_shape itt egy bináris maszk float32-ként 0 és 1 értékekkel, amely a test sziluettjét (vagy háttér nélküli test alakját) ábrázolja.
             #egy normál (szürkeárnyalatos) képet csinál a test alakjának maszkjából.
-        parse_shape_ori = Image.fromarray((parse_shape*255).astype(np.uint8)) # felszorozza 255-tel → [0, 255] skálára teszi (képformátumhoz), --> astype(np.uint8) → 8 bites képformátumra konvertálja, --> Image.fromarray(...) → PIL képpé alakítja a numpy tömböt.
+        parse_shape_ori = Image.fromarray((parse_shape*255).astype(np.uint8)) # felszorozza 255-tel -> [0, 255] skálára teszi (képformátumhoz), --> astype(np.uint8) -> 8 bites képformátumra konvertálja, --> Image.fromarray(...) -> PIL képpé alakítja a numpy tömböt.
             
-            #A testmaszk képet lekicsinyíti 16-szorosára, bilineáris interpolációval (simább átskálázás).
+            #A testmaszk képet lekicsinyíti 16-szorosára, bilineáris interpolációval (simább átskálázás)
         parse_shape = parse_shape_ori.resize(
             (self.fine_width//16, self.fine_height//16), Image.BILINEAR)
 
-            #A lekicsinyített képet újra visszanagyítja az eredeti méretre, Ez a trükk elmosódást hoz létre → "puhább", simított testforma képet eredményez → ez hasznos lehet a modellnek, hogy általános alakstruktúrát tanuljon a konkrét részletek helyett.
+            #A lekicsinyített képet újra visszanagyítja az eredeti méretre, Ez a trükk elmosódást hoz létre -> "puhább", simított testforma képet eredményez -> ez hasznos lehet a modellnek, hogy általános alakstruktúrát tanuljon a konkrét részletek helyett.
         parse_shape = parse_shape.resize(
             (self.fine_width, self.fine_height), Image.BILINEAR)
 
@@ -152,11 +152,11 @@ class CPDataset(data.Dataset):
         parse_shape_ori = parse_shape_ori.resize(
             (self.fine_width, self.fine_height), Image.BILINEAR)
             
-            #Mindkét képet átviszi egy transform lépésen, amit a konstruktorban a transforms.Compose([...]) definiál. Ez normálisan a következőket tartalmazza: - ToTensor() → numpy/PIL → tensor, és [0, 255] → [0, 1],  - Normalize((0.5,), (0.5,)) → [0, 1] → [-1, 1].
+            #Mindkét képet átviszi egy transform lépésen, amit a konstruktorban a transforms.Compose([...]) definiál. Ez normálisan a következőket tartalmazza: - ToTensor() -> numpy/PIL -> tensor, és [0, 255] -> [0, 1],  - Normalize((0.5,), (0.5,)) -> [0, 1] -> [-1, 1].
         shape_ori = self.transform(parse_shape_ori)  # [-1,1]
         shape = self.transform(parse_shape)  # [-1,1]
         
-        phead = torch.from_numpy(parse_head)  # [0,1] -- egyszerűen torch.Tensor-rá alakítja.
+        phead = torch.from_numpy(parse_head)  # [0,1] -- egyszerűen torch.Tensor-rá alakítja. HxW
         # phand = torch.from_numpy(parse_hand)  # [0,1]
         pcm = torch.from_numpy(parse_cloth)  # [0,1] -- A ruha maszkolt részét (egy bináris maszk [1, H, W], ami 1 ott, ahol ruha van, és 0 máshol) is átkonvertálja Tensorrá.
 
@@ -164,7 +164,7 @@ class CPDataset(data.Dataset):
         # Upper cloth -- Kivágja a ruhát az eredeti képből
         im_c = im * pcm + (1 - pcm)  # [-1,1], fill 1 for other parts, ruharégió + "fehér" háttér:
             #im * pcm: megtartja csak a ruhát az eredeti képből (mert ott, ahol pcm == 1, az im pixele megmarad, máshol lenullázódik)
-            #(1 - pcm): ott 1, ahol nem ruha → ha ezt hozzáadjuk, akkor ezek a pixelek fehér vagy 1 értéket kapnak (attól függően, mi a formátum)
+            #(1 - pcm): ott 1, ahol nem ruha -> ha ezt hozzáadjuk, akkor ezek a pixelek fehér vagy 1 értéket kapnak (attól függően, mi a formátum)
             #Tehát a végeredmény: Ahol ruha van: megtartja az eredeti színeket az im-ből, Ahol nincs ruha: a háttér világos vagy fehér lesz (függően a normalizálástól)
 
         # fejet is kivágja
@@ -177,9 +177,9 @@ class CPDataset(data.Dataset):
         with open(osp.join(self.data_path, 'pose', pose_name), 'r') as f:
             pose_label = json.load(f)
             pose_data = pose_label['people'][0]['pose_keypoints'] # Az OpenPose mindig 'people' tömböt ad vissza (még akkor is, ha csak 1 ember van), így az első embert ([0]) használja. pose_keypoints egy hosszú lista: minden testrész 3 értékkel szerepel benne: x, y, confidence.
-            pose_data = np.array(pose_data) # Átalakítja a JSON-ból kiolvasott listát egy (N, 3) alakú NumPy tömbbé. N = 18 keypoint (vagy több, ha hands/face is lenne), oszlopok: x, y, conf.
-            pose_data = pose_data.reshape((-1, 3)) # ezt átalakítod egy (N, 3) méretű tömbbé a reshape-pel --> shape[0] → a kulcspontok száma.
-            #Az OpenPose által visszaadott pose_keypoints lista minden egyes kulcspontot (pl. fej, nyak, váll, térd) egy 3 értékből álló egységként ír le: [x, y, confidence] → tehát: a kulcspont helye és a pontossága.
+            pose_data = np.array(pose_data) # Átalakítja a JSON-ból kiolvasott listát egy (N, 3) alakú NumPy tömbbé. N = 18 test keypoint, oszlopok: x, y, conf.
+            pose_data = pose_data.reshape((-1, 3)) # ezt átalakítod egy (N, 3) méretű tömbbé a reshape-pel --> shape[0] -> a kulcspontok száma.
+            #Az OpenPose által visszaadott pose_keypoints lista minden egyes kulcspontot (pl. fej, nyak, váll, térd) egy 3 értékből álló egységként ír le: [x, y, confidence] -> tehát: a kulcspont helye és a pontossága.
             #Ez a lista 3 * N hosszú, ahol N a kulcspontok száma.
 
         #Létrehoz egy pose_map nevű tenzort, amelyben minden testrészhez (pl. fej, váll, térd) lesz egy külön "csatorna" (mint egy fekete-fehér kép). Méret: [point_num, H, W] (pl. [18, 256, 192]), értéke alapból 0.
@@ -196,7 +196,7 @@ class CPDataset(data.Dataset):
             pointx = pose_data[i, 0]
             pointy = pose_data[i, 1]
             if pointx > 1 and pointy > 1:  # Ha a keypoint értelmes (nem 0 vagy 1, tehát nem hiányzik), akkor egy fehér négyzetet rajzol a képen a pont körül
-                #Két helyre is rajzol: -- one_map → ez egyetlen kulcspont maszkja, --im_pose → ez az összes kulcspont közös képe (diagnosztikához, megjelenítéshez).
+                #Két helyre is rajzol: -- one_map -> ez egyetlen kulcspont maszkja, --im_pose -> ez az összes kulcspont közös képe (diagnosztikához, megjelenítéshez).
                 draw.rectangle((pointx-r, pointy-r, pointx +
                                 r, pointy+r), 'white', 'white')
                 pose_draw.rectangle(
@@ -206,7 +206,7 @@ class CPDataset(data.Dataset):
             pose_map[i] = one_map[0] #A pose_map[i] helyére beteszi.
             #Minden egyes pózpont egy csatornát kap, ahol csak ott van érték, ahol a pont megjelent.
             
-        #Ez a rész létrehozza a pose_map tenzort: Mérete: [point_num, H, W] → minden kulcspont (pl. nyak, térd, stb.) külön csatornában. Ezek a csatornák fehér négyzeteket tartalmaznak a kulcspont helyén.
+        #Ez a rész létrehozza a pose_map tenzort: Mérete: [point_num, H, W] -> minden kulcspont (pl. nyak, térd, stb.) külön csatornában. Ezek a csatornák fehér négyzeteket tartalmaznak a kulcspont helyén.
         #Ez segíti a modellt, hogy a testtartás alapján döntse el, hová illeszkedjen a ruha (pl. ha kezet felemeli a személy, a ruha ujja is másképp álljon).
         #--------------------------------------------------------------------
         
@@ -214,8 +214,8 @@ class CPDataset(data.Dataset):
         im_pose = self.transform(im_pose)
 
         # cloth-agnostic representation---------------------------------------
-        # A ruha-agnosztikus reprezentáció (clothing-agnostic representation) 22 (vagy több) csatornás tensor: -shape (éles emberi forma): 1 csatorna, -im_h (fej): 3 csatorna (RGB fej), -pose_map: 18 csatorna (valszeg több ld. LIP komment)
-        agnostic = torch.cat([shape, im_h, pose_map], 0) # Ezeket torch.cat([...], 0) összeilleszti a csatorna dimenzióban → [20, H, W] alakú tensor. 
+        # A ruha-agnosztikus reprezentáció (clothing-agnostic representation) 22 csatornás tensor: -shape (éles emberi forma): 1 csatorna, -im_h (fej): 3 csatorna (RGB fej), -pose_map: 18 csatorna (keypointokból)
+        agnostic = torch.cat([shape, im_h, pose_map], 0) # Ezeket torch.cat([...], 0) összeilleszti a csatorna (0) dimenzióban -> [22, H, W] alakú tensor. 
 
         if self.stage == 'GMM': # Ha épp a GMM (ruha-igazítás) fázisban vagyunk: Beolvas egy rácskép-et (grid.png) – ez egy geometriai referencia, amit vizualizációra és háborítások figyelésére használnak. 
             im_g = Image.open('grid.png')
@@ -223,7 +223,7 @@ class CPDataset(data.Dataset):
         else:
             im_g = ''
 
-        pcm.unsqueeze_(0)  # CP-VTON+, parse_cloth_mask, vagyis a képen lévő eredeti ruha maszkja (bináris). .unsqueeze_(0) hozzáad egy batch dimenziót → alak: [1, H, W],  Ez hasznos lehet, ha a modellt batch-es feldolgozásra készítjük fel.
+        pcm.unsqueeze_(0)  # CP-VTON+, parse_cloth_mask, vagyis a képen lévő eredeti ruha maszkja (bináris). .unsqueeze_(0) hozzáad egy batch dimenziót -> alak: [1, H, W],  Ez hasznos lehet, ha a modellt batch-es feldolgozásra készítjük fel.
 
         result = {
             'c_name':   c_name,     # for visualization, a ruhadarab fájlneve (str)
